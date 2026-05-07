@@ -17,7 +17,7 @@
 #define PAGING_MAX_MMSWP 4 /* max number of supported swapped space */
 #define PAGING_MAX_SYMTBL_SZ 30
 
-/* 
+/*
  * @bksysnet: in long address mode of 64bit or original 32bit
  * the address type need to be redefined
  */
@@ -30,9 +30,9 @@
 
 typedef char BYTE;
 typedef ADDR_TYPE addr_t;
-//typedef unsigned int uint32_t;
+// typedef unsigned int uint32_t;
 
-/* 
+/*
  * @bksysnet: the format string need to be redefined
  *            based on the address mode
  */
@@ -44,19 +44,23 @@ typedef ADDR_TYPE addr_t;
 #define FORMATX_ADDR "%08x"
 #endif
 
-struct pgn_t{
+struct pgn_t
+{
    addr_t pgn;
-   struct pgn_t *pg_next; 
+   struct pgn_t *pg_next;
 };
 
 /*
  *  Memory region struct
  */
-struct vm_rg_struct {
+struct vm_rg_struct
+{
    int vmaid;
 
    addr_t rg_start;
    addr_t rg_end;
+
+   unsigned long mode_bit;
 
    struct vm_rg_struct *rg_next;
 };
@@ -64,26 +68,27 @@ struct vm_rg_struct {
 /*
  *  Memory area struct
  */
-struct vm_area_struct {
+struct vm_area_struct
+{
    unsigned long vm_id;
    addr_t vm_start;
    addr_t vm_end;
 
    addr_t sbrk;
-/*
- * Derived field
- * unsigned long vm_limit = vm_end - vm_start
- */
+   /*
+    * Derived field
+    * unsigned long vm_limit = vm_end - vm_start
+    */
    struct mm_struct *vm_mm;
    struct vm_rg_struct *vm_freerg_list;
    struct vm_area_struct *vm_next;
 };
 
-
-/* 
+/*
  * Kernel cache pool struct
  */
-struct kcache_pool_struct {
+struct kcache_pool_struct
+{
    int size;
    int align;
 
@@ -94,11 +99,11 @@ struct kcache_pool_struct {
 #endif
 };
 
-
-/* 
+/*
  * Memory management struct
  */
-struct mm_struct {
+struct mm_struct
+{
 #ifdef MM64
    addr_t *pgd;
    addr_t *p4d;
@@ -119,27 +124,27 @@ struct mm_struct {
 
    /* kmem cache pool */
    struct kcache_pool_struct *kcpooltbl;
-
 };
-
 
 /*
  * FRAME/MEM PHY struct
  */
-struct framephy_struct { 
+struct framephy_struct
+{
    addr_t fpn;
    struct framephy_struct *fp_next;
 
    /* Resereed for tracking allocated framed */
-   struct mm_struct* owner;
+   struct mm_struct *owner;
 };
 
-struct memphy_struct {
+struct memphy_struct
+{
    /* Basic field of data and size */
    BYTE *storage;
    int maxsz;
-   
-   /* Sequential device fields */ 
+
+   /* Sequential device fields */
    int rdmflg;
    int cursor;
 
