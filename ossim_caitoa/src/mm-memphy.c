@@ -170,9 +170,37 @@ int MEMPHY_get_freefp(struct memphy_struct *mp, addr_t *retfpn)
 
 int MEMPHY_dump(struct memphy_struct *mp)
 {
-  /*TODO dump memphy contnt mp->storage
-   *     for tracing the memory content
-   */
+   /* Dump memphy content mp->storage for tracing the memory content */
+   
+   printf("\n============= MEMPHY DUMP ============\n");
+   
+   /* Safety check: ensure the memory device actually exists */
+   if (mp == NULL || mp->storage == NULL) {
+       printf("Error: Memory physical device is uninitialized.\n");
+       return -1;
+   }
+
+int i;
+   int empty_flag = 1; /* Used to track if the memory is completely blank */
+
+   /* Loop through the entire physical memory up to its maximum size */
+   for (i = 0; i < mp->maxsz; i++) {
+       
+       /* Only print if the byte is NOT zero (to avoid flooding the console) */
+       if (mp->storage[i] != 0) {
+           /* Print the physical address in hex, and the data byte in hex */
+           printf("Address [0x%08x] : Data [0x%02x]\n", i, (unsigned char)mp->storage[i]);
+           empty_flag = 0;
+       }
+   }
+
+   /* If we looped through everything and found nothing, let the user know */
+   if (empty_flag) {
+       printf("Memory is completely empty (all zeros).\n");
+   }
+   
+   printf("======================================\n\n");
+
    return 0;
 }
 
