@@ -157,6 +157,8 @@ struct pcb_t *get_proc(void)
 	 *
 	 */
 	proc = dequeue(&ready_queue);
+	if (proc != NULL)
+		enqueue(&running_list, proc);
 	pthread_mutex_unlock(&queue_lock);
 
 	return proc;

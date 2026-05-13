@@ -48,7 +48,7 @@ struct pcb_t *purgequeue(struct queue_t *q, struct pcb_t *proc)
         {
                 if (q->proc[i] == proc)
                 {
-                        for (int j = i; j < q->size; j++)
+                        for (int j = i; j < q->size - 1; j++)
                                 q->proc[j] = q->proc[j + 1];
                         q->size--;
                         return proc;
