@@ -107,33 +107,29 @@ int get_pd_from_pagenum(addr_t pgn, addr_t *pgd, addr_t *p4d, addr_t *pud, addr_
  */
 int pte_set_swap(struct pcb_t *caller, addr_t pgn, int swptyp, addr_t swpoff)
 {
-  // struct krnl_t *krnl = caller->krnl;
+  struct krnl_t *krnl = caller->krnl;
+  addr_t *pte_ptr;
 
-  addr_t *pte;
-  addr_t pgd = 0;
-  addr_t p4d = 0;
-  addr_t pud = 0;
-  addr_t pmd = 0;
-  addr_t pt = 0;
+  uint32_t i_pgd, i_p4d, i_pud, i_pmd, i_pt;
 
-  // dummy pte alloc to avoid runtime error
-  pte = malloc(sizeof(addr_t));
 #ifdef MM64
-  /* Get value from the system */
-  /* TODO Perform multi-level page mapping */
-  get_pd_from_pagenum(pgn, &pgd, &p4d, &pud, &pmd, &pt);
-  //... krnl->mm->pgd
-  //... krnl->mm->pt
-  // pte = &krnl->mm->pt;
+  get_pd_from_pagenum(pgn, &i_pgd, &i_p4d, &i_pud, &i_pmd, &i_pt);
+
+  addr_t *p4d_tbl = (addr_t *)krnl->mm->pgd[i_pgd];
+  addr_t *pud_tbl = (addr_t *)p4d_tbl[i_p4d];
+  addr_t *pmd_tbl = (addr_t *)pud_tbl[i_pud];
+  addr_t *pt_tbl = (addr_t *)pmd_tbl[i_pmd];
+
+  pte_ptr = &pt_tbl[i_pt];
 #else
-  pte = &krnl->mm->pgd[pgn];
+  pte_ptr = &krnl->mm->pgd[pgn];
 #endif
+  CLRBIT(*pte_ptr, PAGING_PTE_PRESENT_MASK);
 
-  SETBIT(*pte, PAGING_PTE_PRESENT_MASK);
-  SETBIT(*pte, PAGING_PTE_SWAPPED_MASK);
+  SETBIT(*pte_ptr, PAGING_PTE_SWAPPED_MASK);
 
-  SETVAL(*pte, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT);
-  SETVAL(*pte, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
+  SETVAL(*pte_ptr, swptyp, PAGING_PTE_SWPTYP_MASK, PAGING_PTE_SWPTYP_LOBIT);
+  SETVAL(*pte_ptr, swpoff, PAGING_PTE_SWPOFF_MASK, PAGING_PTE_SWPOFF_LOBIT);
 
   return 0;
 }
