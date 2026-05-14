@@ -29,7 +29,7 @@ struct vm_area_struct *get_vma_by_num(struct mm_struct *mm, int vmaid)
 {
   struct vm_area_struct *pvma = mm->mmap;
 
-  if (mm->mmap == NULL)
+  if (pvma == NULL)
     return NULL;
 
   int vmait = pvma->vm_id;
@@ -139,28 +139,25 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, addr_t vmastart, a
  */
 int inc_vma_limit(struct pcb_t *caller, int vmaid, addr_t inc_sz)
 {
-  // struct vm_rg_struct * newrg = malloc(sizeof(struct vm_rg_struct));
+  struct vm_area_struct *cur_vma = get_vma_by_num(caller->krnl->mm, vmaid);
+  if (!cur_vma)
+    return -1;
 
-  /* TOTO with new address scheme, the size need tobe aligned
-   *      the raw inc_sz maybe not fit pagesize
-   */
-  // addr_t inc_amt;
+  addr_t old_end = cur_vma->vm_end;
+  addr_t new_end = old_end + PAGING_PAGE_ALIGNSZ(inc_sz);
+  addr_t inc_amt = PAGING_PAGE_ALIGNSZ(inc_sz);
+  int incnumpage = inc_amt / PAGING_PAGESZ;
 
-  //  int incnumpage =  inc_amt / PAGING_PAGESZ;
+  if (validate_overlap_vm_area(caller, vmaid, old_end, new_end) < 0)
+    return -1;
 
-  /* TODO Validate overlap of obtained region */
-  // if (validate_overlap_vm_area(caller, vmaid, area->rg_start, area->rg_end) < 0)
-  //   return -1; /*Overlap and failed allocation */
+  cur_vma->vm_end = new_end;
+  cur_vma->sbrk = new_end; // Cập nhật break pointer
 
-  /* TODO: Obtain the new vm area based on vmaid */
-  // cur_vma->vm_end...
-  //  inc_limit_ret...
-  /* The obtained vm area (only)
-   * now will be alloc real ram region */
-
-  //  if (vm_map_ram(caller, area->rg_start, area->rg_end,
-  //                   old_end, incnumpage , newrg) < 0)
-  //    return -1; /* Map the memory to MEMRAM */
+  /* Map dải trang mới vào RAM */
+  struct vm_rg_struct *ret_rg = malloc(sizeof(struct vm_rg_struct));
+  if (vmap_page_range(caller, old_end, incnumpage, NULL, ret_rg) < 0)
+    return -1;
 
   return 0;
 }
