@@ -151,6 +151,9 @@ struct memphy_struct
    /* Management structure */
    struct framephy_struct *free_fp_list;
    struct framephy_struct *used_fp_list;
+
+   /* Synchronization */
+   pthread_mutex_t lock;
 };
 
 #endif
