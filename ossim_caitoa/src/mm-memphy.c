@@ -147,6 +147,7 @@ int MEMPHY_read(struct memphy_struct *mp, addr_t addr, BYTE *value)
       ret = MEMPHY_seq_read(mp, addr, value);
    }
 
+   pthread_mutex_unlock(&mp->lock);
    return ret;
 }
 
@@ -190,6 +191,8 @@ int MEMPHY_write(struct memphy_struct *mp, addr_t addr, BYTE data)
    else {
       ret = MEMPHY_seq_write(mp, addr, data);
    }
+
+   pthread_mutex_unlock(&mp->lock);
    return ret;
 }
 
