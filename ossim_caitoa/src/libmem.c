@@ -420,9 +420,9 @@ int libwrite(
 int libkmem_malloc(struct pcb_t *caller, uint32_t size, uint32_t reg_index)
 {
   addr_t addr;
-
-  int val = __kmalloc(caller, -1, reg_index, size, &addr);
-
+  /* passing vmaid = -1 which then pass it to get_vma_by_num() will return NULL and fail*/
+  //int val = __kmalloc(caller, -1, reg_index, size, &addr);
+  int val = __kmalloc(caller, 0, reg_index, size, &addr);
   if (val != 0)
   {
     return -1;
@@ -440,36 +440,53 @@ int libkmem_malloc(struct pcb_t *caller, uint32_t size, uint32_t reg_index)
  */
 addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t *alloc_addr)
 {
-  struct krnl_t *krnl = caller->krnl;
-  struct mm_struct *kmm = krnl->mm;
-  struct vm_rg_struct rgnode;
+    struct krnl_t *krnl = caller->krnl;
+    struct mm_struct *kmm = krnl->mm;
 
-  struct vm_area_struct *cur_vma = get_vma_by_num(kmm, vmaid);
-  if (!cur_vma)
-    return -1;
+    /* Calculate how many contiguous frames we need */
+    int num_frames = (size + PAGING_PAGESZ - 1) / PAGING_PAGESZ;
 
-  if (get_free_vmrg_area(caller, vmaid, size, &rgnode) == 0)
-  {
-    kmm->symrgtbl[rgid].rg_start = rgnode.rg_start;
-    kmm->symrgtbl[rgid].rg_end = rgnode.rg_end;
+    /* Get contiguous physical frames from RAM */
+    addr_t first_fpn;
+    if (MEMPHY_get_contiguous_freefp(krnl->mram, num_frames, &first_fpn) != 0)
+        return -1;
 
-    *alloc_addr = rgnode.rg_start;
-  }
-  else
-  {
-    addr_t old_sbrk = cur_vma->sbrk;
+    /* Pick a virtual address for this kernel allocation.
+     * We use the kernel VMA's sbrk as the base, same pattern as __alloc. */
+    struct vm_area_struct *cur_vma = get_vma_by_num(kmm, 0);
+    if (!cur_vma)
+        return -1;
 
-    if (old_sbrk + size > cur_vma->vm_end)
-      return -1;
+    addr_t vaddr = cur_vma->sbrk;
 
-    kmm->symrgtbl[rgid].rg_start = old_sbrk;
-    kmm->symrgtbl[rgid].rg_end = old_sbrk + size;
+    /* Extend the VMA if needed */
+    if (vaddr + size > cur_vma->vm_end)
+    {
+        addr_t inc = PAGING_PAGE_ALIGNSZ(size);
+        cur_vma->vm_end += inc;
+    }
 
-    cur_vma->sbrk = old_sbrk + size;
-    *alloc_addr = old_sbrk;
-  }
+    /* Wire each contiguous frame into the page table */
+    for (int i = 0; i < num_frames; i++)
+    {
+        addr_t page_vaddr = vaddr + (addr_t)i * PAGING_PAGESZ;
+        addr_t fpn = first_fpn + i;
 
-  return 0;
+        if (pte_set_fpn(caller, PAGING_PGN(page_vaddr), fpn) != 0)
+            return -1;
+    }
+
+    /* Record in symbol table and advance sbrk */
+    if (rgid >= 0 && rgid < PAGING_MAX_SYMTBL_SZ)
+    {
+        kmm->symrgtbl[rgid].rg_start = vaddr;
+        kmm->symrgtbl[rgid].rg_end   = vaddr + size;
+    }
+
+    cur_vma->sbrk = vaddr + PAGING_PAGE_ALIGNSZ(size);
+    *alloc_addr = vaddr;
+
+    return 0;
 }
 
 /*libkmem_cache_pool_create - create cache pool in kmem
@@ -486,8 +503,9 @@ int libkmem_cache_pool_create(struct pcb_t *caller, uint32_t size, uint32_t alig
   uint32_t total_size = size * num_objs;
 
   addr_t alloc_addr;
-
-  if (__kmalloc(caller, -1, cache_pool_id, total_size, &alloc_addr) != 0)
+  /* passes vmaid = -1, which will return null and fail*/
+  //if (__kmalloc(caller, -1, cache_pool_id, total_size, &alloc_addr) != 0)
+  if (__kmalloc(caller, 0, cache_pool_id, total_size, &alloc_addr) != 0)
   {
     return -1;
   }

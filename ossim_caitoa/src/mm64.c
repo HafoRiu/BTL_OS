@@ -189,12 +189,25 @@ int vmap_pgd_memset(struct pcb_t *caller, // process call
                     addr_t addr,          // start address which is aligned to pagesz
                     int pgnum)            // num of mapping page
 {
-  // int pgit = 0;
-  // uint64_t pattern = 0xdeadbeef;
+  int pgit = 0;
+  uint64_t pattern = 0xdeadbeef;
 
   /* TODO memset the page table with given pattern
    */
+  for (pgit = 0; pgit < pgnum; pgit++)
+    {
+        addr_t cur_addr = addr + (addr_t)pgit * PAGING64_PAGESZ;
 
+        /* Walk/allocate the 5-level page table tree,
+         * then write the dummy pattern into the PTE.
+         * alloc=1 so intermediate tables are created on demand. */
+        addr_t *pte = get_pte_ptr(caller->krnl->mm, cur_addr, 1);
+
+        if (pte == NULL)
+            return -1;
+
+        *pte = (addr_t)pattern;
+    }
   return 0;
 }
 
