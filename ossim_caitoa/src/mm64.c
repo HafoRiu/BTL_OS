@@ -374,6 +374,16 @@ int vmap_pgd_memset(struct pcb_t *caller, // process call
     pte_set_entry(caller, cur_pgn, 0xdeadbeef);
   }
 
+        /* Walk/allocate the 5-level page table tree,
+         * then write the dummy pattern into the PTE.
+         * alloc=1 so intermediate tables are created on demand. */
+        addr_t *pte = get_pte_ptr(caller->krnl->mm, cur_addr, 1);
+
+        if (pte == NULL)
+            return -1;
+
+        *pte = (addr_t)pattern;
+    }
   return 0;
 }
 

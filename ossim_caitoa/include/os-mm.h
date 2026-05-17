@@ -11,6 +11,7 @@
 #ifndef OSMM_H
 #define OSMM_H
 
+#include <pthread.h>
 #include <stdint.h>
 
 #define MM_PAGING
@@ -97,6 +98,7 @@ struct kcache_pool_struct
 #else
    uint32_t storage;
 #endif
+   struct vm_rg_struct *free_obj_list;
 };
 
 /*
