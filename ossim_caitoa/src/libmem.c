@@ -26,6 +26,34 @@
 
 static pthread_mutex_t mmvm_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/* Add a free object address to a cache pool's free list */
+int enlist_kmem_free_obj(struct kcache_pool_struct *pool, addr_t obj_addr)
+{
+    struct vm_rg_struct *node = malloc(sizeof(struct vm_rg_struct));
+    if (!node) return -1;
+
+    node->rg_start = obj_addr;
+    node->rg_end   = obj_addr + pool->size;
+    node->rg_next  = pool->free_obj_list;
+    pool->free_obj_list = node;
+
+    return 0;
+}
+
+/* Get a free object from a cache pool's free list */
+int get_free_obj_from_pool(struct kcache_pool_struct *pool, addr_t *retaddr)
+{
+    if (pool->free_obj_list == NULL)
+        return -1;
+
+    struct vm_rg_struct *node = pool->free_obj_list;
+    *retaddr = node->rg_start;
+    pool->free_obj_list = node->rg_next;
+    free(node);
+
+    return 0;
+}
+
 /*enlist_vm_freerg_list - add new rg to freerg_list
  *@mm: memory region
  *@rg_elmt: new region
@@ -244,7 +272,7 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
     pte_set_swap(caller, vicpgn, swp_type, swpfpn);
 
-    if (PAGING_PAGE_SWAPPED(pte))
+    if (PAGING_PTE_SWP(pte))
     {
       addr_t old_swp_off = PAGING_SWP(pte);
       __swap_cp_page(caller->krnl->active_mswp, old_swp_off, caller->krnl->mram, vicfpn);
@@ -443,30 +471,27 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
     struct krnl_t *krnl = caller->krnl;
     struct mm_struct *kmm = krnl->mm;
 
-    /* Calculate how many contiguous frames we need */
+    /* Calculate number of contiguous frames needed */
     int num_frames = (size + PAGING_PAGESZ - 1) / PAGING_PAGESZ;
 
-    /* Get contiguous physical frames from RAM */
+    /* Get contiguous physical frames — already implemented in mm-memphy.c */
     addr_t first_fpn;
     if (MEMPHY_get_contiguous_freefp(krnl->mram, num_frames, &first_fpn) != 0)
         return -1;
 
-    /* Pick a virtual address for this kernel allocation.
-     * We use the kernel VMA's sbrk as the base, same pattern as __alloc. */
+    /* Use sbrk of vma0 as the virtual base for this allocation */
     struct vm_area_struct *cur_vma = get_vma_by_num(kmm, 0);
     if (!cur_vma)
         return -1;
 
     addr_t vaddr = cur_vma->sbrk;
 
-    /* Extend the VMA if needed */
+    /* Extend VMA if needed */
     if (vaddr + size > cur_vma->vm_end)
-    {
-        addr_t inc = PAGING_PAGE_ALIGNSZ(size);
-        cur_vma->vm_end += inc;
-    }
+        cur_vma->vm_end += PAGING_PAGE_ALIGNSZ(size);
 
-    /* Wire each contiguous frame into the page table */
+    /* Wire each contiguous frame into the page table
+     * using pte_set_fpn() — already implemented in mm64.c */
     for (int i = 0; i < num_frames; i++)
     {
         addr_t page_vaddr = vaddr + (addr_t)i * PAGING_PAGESZ;
@@ -476,7 +501,7 @@ addr_t __kmalloc(struct pcb_t *caller, int vmaid, int rgid, addr_t size, addr_t 
             return -1;
     }
 
-    /* Record in symbol table and advance sbrk */
+    /* Record in symbol table — same pattern as __alloc() */
     if (rgid >= 0 && rgid < PAGING_MAX_SYMTBL_SZ)
     {
         kmm->symrgtbl[rgid].rg_start = vaddr;

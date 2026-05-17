@@ -98,6 +98,7 @@ struct kcache_pool_struct
 #else
    uint32_t storage;
 #endif
+   struct vm_rg_struct *free_obj_list;
 };
 
 /*

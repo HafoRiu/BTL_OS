@@ -19,6 +19,8 @@
 #include <time.h>
 #include <stdlib.h>
 
+addr_t *get_pte_ptr(struct mm_struct *mm, addr_t vaddr, int alloc);
+
 #if defined(MM64)
 
 /*
@@ -110,7 +112,7 @@ int pte_set_swap(struct pcb_t *caller, addr_t pgn, int swptyp, addr_t swpoff)
   struct krnl_t *krnl = caller->krnl;
   addr_t *pte_ptr;
 
-  uint32_t i_pgd, i_p4d, i_pud, i_pmd, i_pt;
+  addr_t i_pgd, i_p4d, i_pud, i_pmd, i_pt;
 
 #ifdef MM64
   get_pd_from_pagenum(pgn, &i_pgd, &i_p4d, &i_pud, &i_pmd, &i_pt);
@@ -514,12 +516,12 @@ int print_pgtbl(struct pcb_t *caller, addr_t start, addr_t end)
       printf("VA: " FORMAT_ADDR " -> ", vaddr);
 
       // Kiểm tra bit Present (bit 31 hoặc theo định nghĩa mask của bạn)
-      if (PAGING_PTE_PRESENT(*pte))
+      if (PAGING_PAGE_PRESENT(*pte))
       {
         addr_t fpn = (*pte & PAGING_PTE_FPN_MASK) >> PAGING_PTE_FPN_LOBIT;
         printf("PTE: %08x | [RAM] FPN: " FORMAT_ADDR "\n", (uint32_t)*pte, fpn);
       }
-      else if (PAGING_PTE_SWAPPED(*pte))
+      else if (PAGING_PTE_SWP(*pte))
       {
         addr_t swpoff = (*pte & PAGING_PTE_SWPOFF_MASK) >> PAGING_PTE_SWPOFF_LOBIT;
         printf("PTE: %08x | [SWAP] Offset: " FORMAT_ADDR "\n", (uint32_t)*pte, swpoff);
