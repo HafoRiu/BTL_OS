@@ -1,7 +1,7 @@
 
 #include "cpu.h"
 #include "timer.h"
-#include "os-sched.h"
+#include "sched.h"
 #include "loader.h"
 #include "mm.h"
 #ifdef MM64
