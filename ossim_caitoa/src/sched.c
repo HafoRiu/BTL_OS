@@ -9,7 +9,7 @@
  */
 
 #include "queue.h"
-#include "sched.h"
+#include "os-sched.h"
 #include <pthread.h>
 
 #include <stdlib.h>
