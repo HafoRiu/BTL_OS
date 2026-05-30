@@ -92,6 +92,16 @@ int __sys_memmap(struct krnl_t *krnl, uint32_t pid, struct sc_regs *regs)
     case SYSMEM_IO_WRITE:
         MEMPHY_write(caller->krnl->mram, regs->a2, regs->a3);
         break;
+    case SYSMEM_KMALLOC_OP:
+    {
+        int rgid = (int)regs->a2;
+        addr_t size = (addr_t)regs->a3;
+        addr_t alloc_addr;
+        if (__kmalloc(caller, 0, rgid, size, &alloc_addr) != 0)
+            return -1;
+        regs->a4 = alloc_addr;
+        break;
+    }
     default:
         printf("Memop code: %d\n", memop);
         break;

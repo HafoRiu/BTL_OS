@@ -479,16 +479,12 @@ int libwrite(
 
 int libkmem_malloc(struct pcb_t *caller, uint32_t size, uint32_t reg_index)
 {
-  addr_t addr;
-  /* passing vmaid = -1 which then pass it to get_vma_by_num() will return NULL and fail*/
-  // int val = __kmalloc(caller, -1, reg_index, size, &addr);
-  int val = __kmalloc(caller, 0, reg_index, size, &addr);
-  if (val != 0)
-  {
-    return -1;
-  }
+  struct sc_regs regs;
+  regs.a1 = SYSMEM_KMALLOC_OP;
+  regs.a2 = reg_index;          /* rgid — which symrgtbl slot to fill */
+  regs.a3 = size;               /* bytes requested */
 
-  return 0;
+  return _syscall(caller->krnl, caller->pid, 17, &regs);
 }
 
 /*kmalloc - alloc region memory in kmem
